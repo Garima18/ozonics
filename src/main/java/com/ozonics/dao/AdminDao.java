@@ -58,6 +58,7 @@ public class AdminDao {
 			return 0;
 		}
 	}
+
 //	public int saveImage(AllBean bean) throws IOException {
 //		String fileb64 = bean.getImage_b64();
 //		String file_name = bean.getFile_name();
@@ -79,7 +80,7 @@ public class AdminDao {
 //		  }
 //		return 1;
 //	}
-	  final Path root = Paths.get("/home/garima/Documents/reactfiles/abc");
+	final Path root = Paths.get("/home/garima/Documents/reactfiles/abc");
 
 	public int saveMultipartFile(MultipartFile file) throws IOException {
 		String file_name = file.getOriginalFilename();
@@ -95,45 +96,46 @@ public class AdminDao {
 		System.out.println("realPathtoUploads = {}" + check_dir);
 
 		int status = 0;
-		
+
 		StringBuilder fileName = new StringBuilder();
 		try {
+			// first way
 //			Path path =Paths.get(dir, file.getOriginalFilename());
-//			
 //			fileName.append(file.getOriginalFilename());
 //			Files.write(path, file.getBytes());
 //			
+
+			// second way
 			String dir1 = dir + File.separator + file_name;
 			InputStream in = file.getInputStream();
 			OutputStream out = new FileOutputStream(dir1);
-		
-	        System.out.println("size:"+file.getBytes());
-
+			System.out.println("size:" + file.getBytes());
 //	        Files.copy(file.getInputStream(), this.root.resolve(file.getOriginalFilename()));
-            in.close();
+			in.close();
 			out.close();
-			
+			// third way
 //			String filePath = dir + file.getOriginalFilename();
 //			File dest = new File(filePath);
 //			file.transferTo(dest);
-			status =1;
+			status = 1;
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
-		System.out.println("status:"+status);
+		System.out.println("status:" + status);
 		return status;
 	}
+
 	public int saveFileInDb(AllBean bean) {
-		
+
 		String query = "insert into ozonics.files(product_name, category, level1, level2, level3, file_name, live_status ) values"
-				+ " ('"+bean.getProduct_name()+"', '"+bean.getCategory()+"', '"+bean.getLevel1()+"', '"+bean.getLevel2()+"', '"+bean.getLevel3()+"', "
-						+ "'"+bean.getFile_name()+"', true)";
-		int status =0;
+				+ " ('" + bean.getProduct_name() + "', '" + bean.getCategory() + "', '" + bean.getLevel1() + "', '"
+				+ bean.getLevel2() + "', '" + bean.getLevel3() + "', " + "'" + bean.getFile_name() + "', true)";
+		int status = 0;
 		System.out.println(query);
 		try {
-		template.update(query);
-		status =1;
-		}catch(Exception e) {
+			template.update(query);
+			status = 1;
+		} catch (Exception e) {
 			e.printStackTrace();
 		}
 		return status;
