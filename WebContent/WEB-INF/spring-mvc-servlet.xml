@@ -11,7 +11,7 @@ xsi:schemaLocation="http://www.springframework.org/schema/mvc http://www.springf
  	<context:component-scan base-package="com.ozonics.controller"></context:component-scan>
 	<mvc:annotation-driven />
 	
-
+<!--  
 	<bean id="ds"
 		class="org.springframework.jdbc.datasource.DriverManagerDataSource">
 		<property name="driverClassName" value="org.postgresql.Driver"></property>
@@ -19,6 +19,16 @@ xsi:schemaLocation="http://www.springframework.org/schema/mvc http://www.springf
 		<property name="username" value="postgres"></property>
 		<property name="password" value="root"></property>
 	</bean>
+	-->
+	
+	<bean id="ds"
+		class="org.springframework.jdbc.datasource.DriverManagerDataSource">
+		<property name="driverClassName" value="org.postgresql.Driver"></property>
+		<property name="url" value="jdbc:postgresql://ec2-3-213-106-122.compute-1.amazonaws.com:5432/d4n682j40bmbim"></property>
+		<property name="username" value="ccxxtkbdzslhnv"></property>
+		<property name="password" value="2f4293c41ac09425849a90943fe3996ecfb3aacef1d65b83ffe40be8f23776a8"></property>
+	</bean>
+	
 <bean id="multipartResolver" class="org.springframework.web.multipart.commons.CommonsMultipartResolver">
  <property name="maxUploadSize" value="268435456"/>
 </bean>
