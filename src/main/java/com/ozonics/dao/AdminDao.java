@@ -3,6 +3,7 @@ package com.ozonics.dao;
 import java.io.BufferedOutputStream;
 import java.io.BufferedWriter;
 import java.io.File;
+import java.nio.file.Files;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
@@ -11,6 +12,8 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.apache.commons.io.FileUtils;
 import org.json.JSONArray;
@@ -18,7 +21,8 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.web.multipart.MultipartFile;
 
-import com.google.common.io.Files;
+//import com.google.common.io.Files;
+import com.ozonics.aws.s3.serv.awsS3ServiceImpl;
 import com.ozonics.bean.AllBean;
 
 public class AdminDao {
@@ -85,8 +89,6 @@ public class AdminDao {
 		String file_name = file.getOriginalFilename();
 		AllBean resultBean = new AllBean();
 //		String type = file_name.split(".")[1];
-		
-		
 
 		System.out.println("name of file:" + file_name);
 		String dir = "/tmp/reactfiles";
@@ -95,7 +97,6 @@ public class AdminDao {
 		if (!check_dir.exists()) {
 			check_dir.mkdir();
 		}
-
 
 		StringBuilder fileName = new StringBuilder();
 		try {
@@ -107,8 +108,8 @@ public class AdminDao {
 //				io.write(file.getBytes());
 //			}catch(Exception e) {e.printStackTrace();}
 //			
-			
-			//another way
+
+			// another way
 //			fileName.append(file.getOriginalFilename());
 //			Files.write(path, file.getBytes());
 //			
@@ -119,38 +120,36 @@ public class AdminDao {
 //			OutputStream out = new FileOutputStream(dir1);
 //			System.out.println("size:" + file.getBytes());
 //			Files.copy(file.getInputStream(), this.root.resolve(file.getOriginalFilename()));
-			
-			
-			
+
 //			third way
-			byte[] bytes =file.getBytes();
+			byte[] bytes = file.getBytes();
 			String content = new String(file.getBytes());
-			File file_save = new File(dir+File.separator+""+file.getOriginalFilename());
+			File file_save = new File(dir + File.separator + "" + file.getOriginalFilename());
 //			BufferedOutputStream stream =new BufferedOutputStream(new FileOutputStream(new File(dir + File.separator + ""+file.getOriginalFilename())));
 			try {
-			BufferedWriter out = new BufferedWriter(new OutputStreamWriter(
-				    new FileOutputStream(file_save), StandardCharsets.UTF_8));
-		
-			out.write(content);
-			out.flush();
-			out.close();
-			
-			resultBean.setStatus(1);
-			resultBean.setFile_name(dir+File.separator+file.getOriginalFilename());
-			
-			}catch(Exception e) {
+				BufferedWriter out = new BufferedWriter(
+						new OutputStreamWriter(new FileOutputStream(file_save), StandardCharsets.UTF_8));
+
+				out.write(content);
+				out.flush();
+				out.close();
+
+				resultBean.setStatus(1);
+				resultBean.setFile_name(dir + File.separator + file.getOriginalFilename());
+
+			} catch (Exception e) {
 				e.printStackTrace();
 				resultBean.setStatus(0);
 //				resultBean.setFile_name(dir+File.separator+file.getOriginalFilename());
 			}
-			
+
 //			in.close();
 //			out.close();
 			// third way
 //			String filePath = dir + file.getOriginalFilename();
 //			File dest = new File(filePath);
 //			file.transferTo(dest);
-			
+
 		} catch (Exception e) {
 			e.printStackTrace();
 			resultBean.setStatus(0);
@@ -194,28 +193,93 @@ public class AdminDao {
 
 		return arr;
 	}
-	public File copyFile (MultipartFile multipart) throws IOException {
-		File convFile = new File(System.getProperty("java.io.tmpdir")+"/"+"pp.jpeg");
+
+	public File copyFile(MultipartFile multipart) throws IOException {
+//		File convFile = new File(System.getProperty("java.io.tmpdir")+"/"+"pp.jpeg");
 //		multipart.transferTo(convFile);
-		
-		System.out.println("running new");
-		
+
+//		String rootpath = System.getProperty("catalina.home");
+//		System.out.println(rootpath);
+//		File dir = new File("/home/garima/Documents/reactfiles/abc"+File.separator+"tmpfiles");
+//
+		File serverFile = new File(
+				"/home/garima/Documents/reactfiles/abc" + File.separator + multipart.getOriginalFilename());
+		BufferedOutputStream stream = new BufferedOutputStream(new FileOutputStream(serverFile));
 		byte[] bytes = multipart.getBytes();
-		String rootpath = System.getProperty("catalina.home");
-		System.out.println(rootpath);
-		File dir = new File("/home/garima/Documents/reactfiles/abc"+File.separator+"tmpfiles");
-//		if (!dir.exists())
-//			dir.mkdirs();
-		File serverFile = new File("/home/garima/Documents/reactfiles/abc"
-				+ File.separator + multipart.getOriginalFilename());
-		BufferedOutputStream stream = new BufferedOutputStream(
-				new FileOutputStream(serverFile));
 		stream.write(bytes);
 		stream.close();
 
+		Path root1 = Paths
+				.get("/home/garima/Documents/reactfiles/abc" + File.separator + multipart.getOriginalFilename());
+		System.out.println("file:" + Files.probeContentType(root1));
+
 //		FileUtils.copyFile(convFile, dest);
+
+//		File file = new File("/home/garima/Downloads/lido-logo-desktop.jpg");
+		String fileBean = null;
+		awsS3ServiceImpl service = new awsS3ServiceImpl();
+//		fileBean = service.uploadFileImage(multipart, "event");
+//		fileBean = service.uploadFileImage(file, "event");
+
+//		System.out.println(fileBean.getFile_name());
+
 		System.out.println("success");
+
+		return null;
+	}
+
+	public int addUser(AllBean bean) {
+		String check_user = "Select count(*) from ozonics.users where username = '" + bean.getUsername() + "'";
+		final AllBean bean1 = new AllBean();
+		template.query(check_user, new RowMapper() {
+
+			public Object mapRow(ResultSet rs, int arg1) throws SQLException {
+				// TODO Auto-generated method stub
+				bean1.setCount(rs.getInt("count"));
+				return null;
+			}
+
+		});
+		System.out.println("count of user:" + bean1.getCount());
+		int status = 0;
+		if (bean1.getCount() > 0) {
+			// user already exiss
+			status = 2;
+		} else {
+			String query = "insert into ozonics.users(username, password, phone_num, segment) values ('"
+					+ bean.getUsername() + "', '" + bean.getPassword() + "', " + "'" + bean.getPhone_num() + "', '"
+					+ bean.getSegment() + "')";
+			try {
+				template.update(query);
+				status = 1;
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+
+		}
+		System.out.println("status:"+status);
+		return status;
+	}
+	
+	public JSONArray searchQuery (String searchStr){
+		String query = "select file_name from ozonics.files where file_folder like '%"+searchStr+"%'";
+		System.out.println(query);
+		final JSONArray arr = new JSONArray();
 		
-		return convFile;
+		final List<AllBean> list = new ArrayList<AllBean>();
+		template.query(query, new RowMapper() {
+
+			public Object mapRow(ResultSet rs, int arg1) throws SQLException {
+				// TODO Auto-generated method stub
+				AllBean tempbean = new AllBean();
+				tempbean.setFile_name(rs.getString("file_name"));
+				arr.put(rs.getString("file_name"));
+				list.add(tempbean);
+				return null;
+			}
+			
+		});
+		System.out.println("File size:"+list.size());
+		return arr;
 	}
 }

@@ -1,8 +1,10 @@
 package com.ozonics.aws.s3.serv;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Async;
@@ -23,19 +25,18 @@ public class awsS3ServiceImpl {
 	    private String bucketName;
 	    
 	    public awsS3ServiceImpl() {
-	        bucketName = "lidomall/images";
+	        bucketName = "lido/ozonics/files";
 	    }
 	    
 	    @Async
-	    public AllBean uploadFileImage(final File file, final String category, String bucket_name_ext) {
+	    public String uploadFileImage(final MultipartFile multipartFile, final String category) throws IOException {
 	        System.out.println("File upload in progress.");
 	        String folderName = this.bucketName;
 	        int status = 0;
 	        try {
-//	            final File file = this.convertMultiPartFileToFile(multipartFile);
+	            final File file = this.convertMultiPartFileToFile(multipartFile);
 	            if (category.equals("event")) {
-	            	   bucketName = bucketName+bucket_name_ext;
-	            	System.out.println(bucket_name_ext+" ______"+bucketName);
+	            	System.out.println(bucketName);
 	                folderName = this.uploadEventsToS3Bucket(bucketName, file);
 	            }
 	            System.out.println("File upload is completed.");
@@ -50,12 +51,12 @@ public class awsS3ServiceImpl {
 	        bean.setStatus(status);
 	        bean.setFile_name(folderName.replace("lido/", ""));
 	        
-	        return bean;
+	        return null;
 	    }
 	    
 	    @Async
-	    public String uploadFile(final MultipartFile multipartFile, final String category) {
-	        System.out.println("File upload in progress.");
+	    public String uploadFile(final MultipartFile multipartFile, final String category) throws IOException {
+	        System.out.println("multipart upload in progress.");
 	        String folderName = this.bucketName;
 	        try {
 	            final File file = this.convertMultiPartFileToFile(multipartFile);
@@ -69,38 +70,13 @@ public class awsS3ServiceImpl {
 	        return folderName;
 	    }
 	    
-	    private File convertMultiPartFileToFile(final MultipartFile multipartFile) {
-	        final File file = new File(multipartFile.getOriginalFilename());
-	        try {
-	            Throwable t = null;
-	            try {
-	                final FileOutputStream outputStream = new FileOutputStream(file);
-	                try {
-	                    outputStream.write(multipartFile.getBytes());
-	                }
-	                finally {
-	                    if (outputStream != null) {
-	                        outputStream.close();
-	                    }
-	                }
-	            }
-	            finally {
-	                if (t == null) {
-	                    final Throwable exception = null;
-	                    t = exception;
-	                }
-	                else {
-	                    final Throwable exception = null;
-	                    if (t != exception) {
-	                        t.addSuppressed(exception);
-	                    }
-	                }
-	            }
-	        }
-	        catch (IOException ex) {
-	            System.out.println("Error converting the multi-part file to file= " + ex.getMessage());
-	        }
-	        return file;
+	    private File convertMultiPartFileToFile(final MultipartFile multipartFile) throws IOException {
+	    	 File convFile = new File(multipartFile.getOriginalFilename());
+	    	    FileOutputStream fos = new FileOutputStream(convFile);
+	    	
+	    	    fos.write(multipartFile.getBytes());
+	    	    fos.close();
+	    	    return convFile;
 	    }
 	    
 	    private String uploadEventsToS3Bucket(String bucketName, final File file) {
@@ -112,7 +88,6 @@ public class awsS3ServiceImpl {
 	        try {
 	            System.out.println("yes");
 //	            bucketName = String.valueOf(bucketName);
-	            System.out.println(bucketName);
 	            
 	            final PutObjectRequest por = new PutObjectRequest(bucketName, uniqueFileName, file);
 	            por.setCannedAcl(CannedAccessControlList.PublicReadWrite);

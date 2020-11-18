@@ -9,8 +9,53 @@ private String level1;
 private String level2;
 private String level3;
 private Integer status;
+private String username;
+private String password;
+private String phone_num;
+private String segment;
+private Integer count;
 
 
+
+public Integer getCount() {
+	return count;
+}
+
+public void setCount(Integer count) {
+	this.count = count;
+}
+
+public String getUsername() {
+	return username;
+}
+
+public void setUsername(String username) {
+	this.username = username;
+}
+
+public String getPassword() {
+	return password;
+}
+
+public void setPassword(String password) {
+	this.password = password;
+}
+
+public String getPhone_num() {
+	return phone_num;
+}
+
+public void setPhone_num(String phone_num) {
+	this.phone_num = phone_num;
+}
+
+public String getSegment() {
+	return segment;
+}
+
+public void setSegment(String segment) {
+	this.segment = segment;
+}
 
 public Integer getStatus() {
 	return status;

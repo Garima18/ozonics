@@ -8,12 +8,12 @@ import java.net.MalformedURLException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.List;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import org.apache.commons.io.FileUtils;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,7 +30,6 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.multipart.MultipartHttpServletRequest;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 
-import com.google.api.client.http.HttpHeaders;
 import com.google.gson.Gson;
 import com.ozonics.bean.AllBean;
 import com.ozonics.dao.AdminDao;
@@ -162,14 +161,67 @@ public class StartController {
 		}
 
 	}
+
 	
 	@RequestMapping(value = "/test", consumes = MediaType.MULTIPART_FORM_DATA_VALUE, method = RequestMethod.POST)
 	public void test(HttpServletResponse response, @RequestParam MultipartFile file,
 			MultipartHttpServletRequest request) throws IOException {
-		System.out.println(file.getOriginalFilename());
+		request.setCharacterEncoding("UTF-8");
+		System.out.println(file.getContentType());
 			File savedFile = adminDao.copyFile(file);
 		
 		        
+	}
+	@RequestMapping("/searchQuery")
+	public void searchQuery(HttpServletRequest request, HttpServletResponse response, @RequestBody String json) throws IOException {
+		System.out.println("Yess");
+		JSONObject obj = new JSONObject(json);
+		String searchStr = obj.getString("searchStr");
+		
+		JSONArray list =adminDao.searchQuery(searchStr);
+//		Gson gson  = new Gson();
+//		String str = gson.toJson(list);
+		
+//		JSONArray arr = new JSONArray(str);
+		
+		JSONObject myobj = new JSONObject();
+		myobj.put("msg", "SUCCESS");
+		myobj.put("files", list);
+
+		response.setContentType("application/json");
+		PrintWriter pw = response.getWriter();
+		pw.print(myobj);
+		pw.flush();
+		pw.close();
+	}
+	
+	@RequestMapping("/addUser")
+	public void addUser(HttpServletRequest request, HttpServletResponse response, @RequestBody String json) throws IOException {
+		
+		JSONObject obj = new JSONObject(json);
+		AllBean bean = new AllBean();
+		bean.setUsername(obj.getString("username"));
+		bean.setPassword(obj.getString("password"));
+		bean.setPhone_num(obj.getString("phone_num"));
+		bean.setSegment(obj.getString("segment"));
+		
+		int result = adminDao.addUser(bean);
+		JSONObject myobj = new JSONObject();
+		if(result ==1) {
+			myobj.put("msg", "SUCCESS");
+			myobj.put("status", 1);
+		}else if(result == 2) {
+			myobj.put("msg", "Already Exists");
+			myobj.put("status", 2);
+		}else {
+			myobj.put("msg", "FAILURE");
+			myobj.put("status", 0);
+		}
+		response.setContentType("application/json");
+		PrintWriter pw = response.getWriter();
+		pw.print(myobj);
+		pw.flush();
+		pw.close();
 	}
 	
 }

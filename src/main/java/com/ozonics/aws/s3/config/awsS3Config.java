@@ -26,11 +26,11 @@ public class awsS3Config {
 	    private String region;
 	    
 	    public awsS3Config() {
-//	    	 this.accessKeyId="AKIATJPYHMGVTA75UL5S";
+	    	 this.accessKeyId="AKIATJPYHMGVTA75UL5S";
 //	        this.accessKeyId = "AKIA2OA57QFWUBVCVKSW"; // for second test
 ////	        this.accessKeyId = "AKIATJPYHMGV2SMRJPHN";   //for test
 //	       
-//	        this.secretAccessKey = "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";
+	        this.secretAccessKey = "eA/wHSkVR8W9dbQ+s1O1lvX6h5dV1FxUlDkn5doR";
 //	        this.secretAccessKey = "4jLDYcIz72u9iyGPjKfCcogotV+NM+kb3kigSi74"; // for second test
 ////	        this.secretAccessKey = "lxBaGamnOPTzq6gpqp1CpmFFnGlPM9p1C0IyJ22f";     //for test
 
