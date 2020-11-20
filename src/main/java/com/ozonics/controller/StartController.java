@@ -204,6 +204,8 @@ public class StartController {
 		bean.setPassword(obj.getString("password"));
 		bean.setPhone_num(obj.getString("phone_num"));
 		bean.setSegment(obj.getString("segment"));
+		bean.setCategory(obj.getString("category"));
+		bean.setSub_category(obj.getString("sub_category"));
 		
 		int result = adminDao.addUser(bean);
 		JSONObject myobj = new JSONObject();

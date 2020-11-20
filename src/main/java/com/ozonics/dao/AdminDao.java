@@ -40,22 +40,33 @@ public class AdminDao {
 	}
 
 	int count = 0;
+	int count2 = 0;
 
 	public int verifyUser(String username, String password) {
 		System.out.println("no part");
 		String query = "select count(*) from ozonics.login where username = '" + username + "' and password = '"
 				+ password + "'";
-
+		String query1 = "Select count(*) from ozonics.users where username = '"+username+"' and password = '"+password+"'";
+		
 		template.query(query, new RowMapper() {
-
 			public Object mapRow(ResultSet rs, int arg1) throws SQLException {
 				// TODO Auto-generated method stub
 				count = rs.getInt("count");
 				return null;
 			}
 		});
+		
+		template.query(query1, new RowMapper() {
+			public Object mapRow(ResultSet rs, int arg1) throws SQLException {
+				// TODO Auto-generated method stub
+				count2 = rs.getInt("count");
+				return null;
+			}
+		});
+		
+		
 		System.out.println("count:" + count);
-		if (count > 0) {
+		if (count > 0 || count2 >0) {
 			return 1;
 		} else {
 			return 0;
@@ -246,9 +257,9 @@ public class AdminDao {
 			// user already exiss
 			status = 2;
 		} else {
-			String query = "insert into ozonics.users(username, password, phone_num, segment) values ('"
+			String query = "insert into ozonics.users(username, password, phone_num, segment, category, sub_category) values ('"
 					+ bean.getUsername() + "', '" + bean.getPassword() + "', " + "'" + bean.getPhone_num() + "', '"
-					+ bean.getSegment() + "')";
+					+ bean.getSegment() + "', '"+bean.getCategory()+"', '"+bean.getSub_category()+"')";
 			try {
 				template.update(query);
 				status = 1;

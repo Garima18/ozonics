@@ -14,8 +14,17 @@ private String password;
 private String phone_num;
 private String segment;
 private Integer count;
+private String sub_category;
 
 
+
+public String getSub_category() {
+	return sub_category;
+}
+
+public void setSub_category(String sub_category) {
+	this.sub_category = sub_category;
+}
 
 public Integer getCount() {
 	return count;
