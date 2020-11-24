@@ -2,12 +2,17 @@ package com.ozonics.dao;
 
 import java.io.BufferedOutputStream;
 import java.io.BufferedWriter;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.nio.file.Files;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStreamWriter;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.sql.ResultSet;
@@ -15,12 +20,16 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.apache.commons.io.FileUtils;
 import org.json.JSONArray;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.amazonaws.regions.Regions;
+import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.AmazonS3ClientBuilder;
+import com.amazonaws.services.s3.internal.Constants;
+import com.ozonics.aws.s3.config.S3MultipartUpload;
 //import com.google.common.io.Files;
 import com.ozonics.aws.s3.serv.awsS3ServiceImpl;
 import com.ozonics.bean.AllBean;
@@ -42,34 +51,51 @@ public class AdminDao {
 	int count = 0;
 	int count2 = 0;
 
-	public int verifyUser(String username, String password) {
-		System.out.println("no part");
-		String query = "select count(*) from ozonics.login where username = '" + username + "' and password = '"
-				+ password + "'";
-		String query1 = "Select count(*) from ozonics.users where username = '"+username+"' and password = '"+password+"'";
+	public AllBean verifyUser(String username, String password) {
+		final AllBean resultBean = new AllBean();
 		
-		template.query(query, new RowMapper() {
-			public Object mapRow(ResultSet rs, int arg1) throws SQLException {
+		System.out.println("no part");
+		String query = "select username, phone_num from ozonics.login where lower(username) = '" + username.toLowerCase() + "' and password = '"
+				+ password + "'";
+		String query1 = "Select username, phone_num from ozonics.users where lower(username) = '"+username.toLowerCase()+"' and password = '"+password+"'";
+		
+	
+		List<String> list = template.query(query, new RowMapper() {
+			public String mapRow(ResultSet rs, int arg1) throws SQLException {
 				// TODO Auto-generated method stub
-				count = rs.getInt("count");
-				return null;
+				String str = rs.getString("username");
+				resultBean.setUsername(str);
+				resultBean.setPhone_num(rs.getString("phone_num"));
+				return str;
 			}
 		});
-		
-		template.query(query1, new RowMapper() {
-			public Object mapRow(ResultSet rs, int arg1) throws SQLException {
+		System.out.println("list:   "+list.size());
+		List<String> list2 = template.query(query1, new RowMapper() {
+			public String mapRow(ResultSet rs, int arg1) throws SQLException {
 				// TODO Auto-generated method stub
-				count2 = rs.getInt("count");
-				return null;
+				String str = rs.getString("username");
+				resultBean.setUsername(str);
+
+				resultBean.setPhone_num(rs.getString("phone_num"));
+
+				return str;
 			}
 		});
 		
 		
 		System.out.println("count:" + count);
-		if (count > 0 || count2 >0) {
-			return 1;
+		if(list.size() >0) {
+			resultBean.setUser_type("admin");
+		}else if(list2.size()>0){
+			resultBean.setUser_type("user");
+		}
+		if (list.size() > 0 || list2.size() >0) {
+			resultBean.setCount(1);
+			return resultBean;
 		} else {
-			return 0;
+			resultBean.setCount(0);
+
+			return resultBean;
 		}
 	}
 
@@ -234,6 +260,32 @@ public class AdminDao {
 
 //		System.out.println(fileBean.getFile_name());
 
+
+        final int UPLOAD_PART_SIZE = 10 * Constants.MB;
+		int bytesRead = 0, bytesAdded = 0;
+		byte[] data = new byte[10*Constants.MB];
+		ByteArrayOutputStream bufferOutputStream = new ByteArrayOutputStream();
+		 URL url = new URL("_remote_url_of_uploading_file_");
+	     HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+         connection.setRequestMethod("GET");
+
+         InputStream inputStream = connection.getInputStream();
+		while((bytesRead = inputStream.read(data, 0, bytesRead))!= -1) {
+            bufferOutputStream.write(data, 0, bytesRead);
+            if (bytesAdded < UPLOAD_PART_SIZE) {
+                // continue writing to same output stream unless it's size gets more than UPLOAD_PART_SIZE
+                bytesAdded += bytesRead;
+                continue;
+            }
+            AmazonS3 s3Client = AmazonS3ClientBuilder.standard().withRegion(Regions.US_EAST_1).build();
+
+            S3MultipartUpload multipartUpload = new S3MultipartUpload("lido/ozonics/files", "abc.jpeg", s3Client);
+            multipartUpload.uploadPartAsync(new ByteArrayInputStream(bufferOutputStream.toByteArray()));
+            bufferOutputStream.reset(); // flush the bufferOutputStream
+            bytesAdded = 0; 
+            
+		}
+		
 		System.out.println("success");
 
 		return null;
@@ -292,5 +344,50 @@ public class AdminDao {
 		});
 		System.out.println("File size:"+list.size());
 		return arr;
+	}
+	
+public int updateOTPindb(String user_type, String otp, String username) {
+	String query = "";
+	if(user_type.equals("admin")) {
+	query = "update ozonics.login set otp="+otp+" where username = '"+username+"'";
+	
+	}else {
+		query = "update ozonics.users set otp="+otp+" where username = '"+username+"'";
+	}
+	int status=0;
+	try {
+		System.out.println(query);
+		template.update(query);
+		System.out.println("OTP updated successfully");
+		status =1;
+	}catch(Exception e) {
+		System.out.println("OTP update failed");
+		e.printStackTrace();
+		
+	}
+	return status;
+}
+	
+	public int verifyOTP(String user_type, int otp, String username) {
+		String query = "";
+		if(user_type.equals("admin"))
+		{
+			query = "select count(*)  from ozonics.login where lower(username) = '"+username.toLowerCase()+"' and otp = '"+otp+"' ";
+		}else {
+			query = "select count(*)    from ozonics.users where lower(username) = '"+username.toLowerCase()+"' and otp = '"+otp+"' ";
+		}
+		
+		List<Integer> list = template.query(query, new RowMapper() {
+
+			public Integer mapRow(ResultSet rs, int arg1) throws SQLException {
+				// TODO Auto-generated method stub
+				int count = rs.getInt("count");
+				return count;
+			}
+			
+		});
+		System.out.println("length of list:"+list.size());
+		
+		return list.size();
 	}
 }

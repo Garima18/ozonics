@@ -8,7 +8,7 @@ import java.net.MalformedURLException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.List;
+import java.util.Random;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
@@ -21,7 +21,10 @@ import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Controller;
+import org.springframework.ui.ModelMap;
 import org.springframework.util.FileCopyUtils;
+import org.springframework.validation.BindingResult;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
@@ -31,6 +34,7 @@ import org.springframework.web.multipart.MultipartHttpServletRequest;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 
 import com.google.gson.Gson;
+import com.ozonics.api.TwilioSms;
 import com.ozonics.bean.AllBean;
 import com.ozonics.dao.AdminDao;
 
@@ -52,11 +56,37 @@ public class StartController {
 
 		// send email to above customer, lido and save in db
 		System.out.println("Now Done");
-		int result = adminDao.verifyUser(username, password);
+		String sentOTPBytwilio = null;
+		
+		//verifying user id and password
+		AllBean result = adminDao.verifyUser(username, password);
+		Random rand = new Random();
+
+		String id = String.format("%04d", rand.nextInt(100000));
+		
+		//sending OTP with twilio
+		if (result.getCount() > 0) {
+			TwilioSms sms = new TwilioSms();
+			sentOTPBytwilio = sms.sendMsgViaTwilio(id, result.getPhone_num());
+			System.out.println("Message by twilio:" + sentOTPBytwilio);
+
+		}
 		JSONObject myobj = new JSONObject();
-		if (result == 1) {
+		int updateOTPdb =0;
+		
+		
+		//updating otp in db
+		if(sentOTPBytwilio.equals("1")) {
+			updateOTPdb = adminDao.updateOTPindb(result.getUser_type(), id, result.getUsername());
+
+		}
+		if (updateOTPdb== 1) {
+			myobj.put("user_type", result.getUser_type());
 			myobj.put("msg", "SUCCESS");
+			myobj.put("phone_num", result.getPhone_num());
+			myobj.put("username", result.getUsername());
 		} else {
+			
 			myobj.put("msg", "FAILURE");
 		}
 		response.setContentType("application/json");
@@ -66,7 +96,7 @@ public class StartController {
 		pw.close();
 	}
 
-	@RequestMapping(value = "/saveImage", consumes = MediaType.MULTIPART_FORM_DATA_VALUE, method = RequestMethod.POST)
+	@RequestMapping(value = "/saveImage", method = RequestMethod.POST)
 	public void saveImage(HttpServletResponse response, @RequestParam MultipartFile file,
 			MultipartHttpServletRequest request) throws IOException {
 
@@ -88,7 +118,7 @@ public class StartController {
 //		System.out.println("image str:"+bean.getImage_b64());
 		AllBean result = adminDao.saveMultipartFile(file);
 		int saveInDb = 0;
-		if(result.getStatus() ==1) {
+		if (result.getStatus() == 1) {
 			bean.setFile_name(result.getFile_name());
 			saveInDb = adminDao.saveFileInDb(bean);
 		}
@@ -105,17 +135,15 @@ public class StartController {
 	@RequestMapping("/sendFile")
 	public void sendFile(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
-		
+
 		String filename = request.getParameter("id");
-		   response.setContentType("image/png");
- 	        String p = "/home/garima/Documents/reactfiles/"+filename;
-	        OutputStream os = response.getOutputStream();
-            byte[] encoded = Files.readAllBytes(Paths.get(p));
-            FileCopyUtils.copy(encoded, os);
-	        os.close();	
+		response.setContentType("image/png");
+		String p = "/home/garima/Documents/reactfiles/" + filename;
+		OutputStream os = response.getOutputStream();
+		byte[] encoded = Files.readAllBytes(Paths.get(p));
+		FileCopyUtils.copy(encoded, os);
+		os.close();
 
-
-		
 	}
 
 	@RequestMapping("sendAllFiles")
@@ -162,28 +190,49 @@ public class StartController {
 
 	}
 
-	
 	@RequestMapping(value = "/test", consumes = MediaType.MULTIPART_FORM_DATA_VALUE, method = RequestMethod.POST)
 	public void test(HttpServletResponse response, @RequestParam MultipartFile file,
 			MultipartHttpServletRequest request) throws IOException {
 		request.setCharacterEncoding("UTF-8");
 		System.out.println(file.getContentType());
-			File savedFile = adminDao.copyFile(file);
-		
-		        
+		File savedFile = adminDao.copyFile(file);
+
 	}
+
+	@RequestMapping(value = "/fileUploadPage", method = RequestMethod.POST)
+	public String fileUpload(@Validated AllBean file, BindingResult result, ModelMap model) throws IOException {
+		if (result.hasErrors()) {
+			System.out.println("validation errors");
+			return "fileUploadPage";
+		} else {
+			System.out.println("Fetching file");
+			MultipartFile multipartFile = file.getFile();
+			// String uploadPath = context.getRealPath("") + File.separator + "temp" +
+			// File.separator;
+			String uploadPath = "/tmp/reactfiles/";
+			System.out.println(uploadPath);
+
+			FileCopyUtils.copy(file.getFile().getBytes(), new File(uploadPath + file.getFile().getOriginalFilename()));
+			String fileName = multipartFile.getOriginalFilename();
+			model.addAttribute("fileName", fileName);
+			return "success";
+		}
+
+	}
+
 	@RequestMapping("/searchQuery")
-	public void searchQuery(HttpServletRequest request, HttpServletResponse response, @RequestBody String json) throws IOException {
+	public void searchQuery(HttpServletRequest request, HttpServletResponse response, @RequestBody String json)
+			throws IOException {
 		System.out.println("Yess");
 		JSONObject obj = new JSONObject(json);
 		String searchStr = obj.getString("searchStr");
-		
-		JSONArray list =adminDao.searchQuery(searchStr);
+
+		JSONArray list = adminDao.searchQuery(searchStr);
 //		Gson gson  = new Gson();
 //		String str = gson.toJson(list);
-		
+
 //		JSONArray arr = new JSONArray(str);
-		
+
 		JSONObject myobj = new JSONObject();
 		myobj.put("msg", "SUCCESS");
 		myobj.put("files", list);
@@ -194,10 +243,11 @@ public class StartController {
 		pw.flush();
 		pw.close();
 	}
-	
+
 	@RequestMapping("/addUser")
-	public void addUser(HttpServletRequest request, HttpServletResponse response, @RequestBody String json) throws IOException {
-		
+	public void addUser(HttpServletRequest request, HttpServletResponse response, @RequestBody String json)
+			throws IOException {
+
 		JSONObject obj = new JSONObject(json);
 		AllBean bean = new AllBean();
 		bean.setUsername(obj.getString("username"));
@@ -206,16 +256,16 @@ public class StartController {
 		bean.setSegment(obj.getString("segment"));
 		bean.setCategory(obj.getString("category"));
 		bean.setSub_category(obj.getString("sub_category"));
-		
+
 		int result = adminDao.addUser(bean);
 		JSONObject myobj = new JSONObject();
-		if(result ==1) {
+		if (result == 1) {
 			myobj.put("msg", "SUCCESS");
 			myobj.put("status", 1);
-		}else if(result == 2) {
+		} else if (result == 2) {
 			myobj.put("msg", "Already Exists");
 			myobj.put("status", 2);
-		}else {
+		} else {
 			myobj.put("msg", "FAILURE");
 			myobj.put("status", 0);
 		}
@@ -226,4 +276,28 @@ public class StartController {
 		pw.close();
 	}
 	
+	@RequestMapping("verifyOtp")
+	public void verifyOtp(HttpServletRequest request, HttpServletResponse response, @RequestBody String json) throws IOException {
+		JSONObject obj = new JSONObject(json);
+		
+		String user_type = obj.getString("user_type");
+		int otp = obj.getInt("otp");
+		String username = obj.getString("username");
+			
+		int verifyOtp = adminDao.verifyOTP(user_type, otp, username);
+		JSONObject myobj = new JSONObject();
+		if(verifyOtp>0) {
+			myobj.put("msg", "SUCCESS");
+			myobj.put("status", 1);
+		}else {
+			myobj.put("msg", "FAILURE");
+			myobj.put("status", 0);
+		}
+		response.setContentType("application/json");
+		PrintWriter pw = response.getWriter();
+		pw.print(myobj);
+		pw.flush();
+		pw.close();
+	}
+
 }

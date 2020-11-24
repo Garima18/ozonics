@@ -16,12 +16,13 @@
 
       <form:form method = "POST" modelAttribute = "fileUpload"
 
-         enctype = "multipart/form-data">
+         content-type = "multipart/form-data">
 
          Please select a file to upload : 
 
          <input type = "file" name = "file" />
-
+         <label for="file">Select file</label>
+       
          <input type = "submit" value = "upload" />
 
       </form:form>
