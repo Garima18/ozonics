@@ -18,6 +18,7 @@ import java.nio.file.Paths;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.List;
 
 import org.json.JSONArray;
@@ -309,9 +310,9 @@ public class AdminDao {
 			// user already exiss
 			status = 2;
 		} else {
-			String query = "insert into ozonics.users(username, password, phone_num, segment, category, sub_category) values ('"
+			String query = "insert into ozonics.users(username, password, phone_num, segment, category, sub_category, login_time) values ('"
 					+ bean.getUsername() + "', '" + bean.getPassword() + "', " + "'" + bean.getPhone_num() + "', '"
-					+ bean.getSegment() + "', '"+bean.getCategory()+"', '"+bean.getSub_category()+"')";
+					+ bean.getSegment() + "', '"+bean.getCategory()+"', '"+bean.getSub_category()+"', '"+Calendar.getInstance().getTime()+"')";
 			try {
 				template.update(query);
 				status = 1;
@@ -321,6 +322,19 @@ public class AdminDao {
 
 		}
 		System.out.println("status:"+status);
+		return status;
+	}
+	
+	public int editUser(AllBean bean) {
+		
+		String query = "update ozonics.users set password = '"+bean.getPassword()+"', phone_num = '"+bean.getPhone_num()+"', segment='"+bean.getSegment()+"', category = '"+bean.getCategory()+"', "
+				+ "sub_category='"+bean.getSub_category()+"' where username = '"+bean.getUsername()+"' ";
+		int status =0;
+		try {
+			template.update(query);
+			status =1;
+		}catch(Exception e) {e.printStackTrace();}
+		
 		return status;
 	}
 	
@@ -349,15 +363,18 @@ public class AdminDao {
 public int updateOTPindb(String user_type, String otp, String username) {
 	String query = "";
 	if(user_type.equals("admin")) {
-	query = "update ozonics.login set otp="+otp+" where username = '"+username+"'";
+	query = "update ozonics.login set otp='"+otp+"', login_time = '"+Calendar.getInstance().getTime()+"' where username = '"+username+"'";
 	
 	}else {
-		query = "update ozonics.users set otp="+otp+" where username = '"+username+"'";
+		query = "update ozonics.users set otp='"+otp+"', login_time = '"+Calendar.getInstance().getTime()+"' where username = '"+username+"'";
 	}
+	String query2 = "insert into ozonics.login_details(username, login_time) values ('"+username+"', '"+Calendar.getInstance().getTime()+"')";
 	int status=0;
 	try {
 		System.out.println(query);
+		System.out.println(query2);
 		template.update(query);
+		template.update(query2);
 		System.out.println("OTP updated successfully");
 		status =1;
 	}catch(Exception e) {
@@ -377,6 +394,7 @@ public int updateOTPindb(String user_type, String otp, String username) {
 			query = "select count(*)    from ozonics.users where lower(username) = '"+username.toLowerCase()+"' and otp = '"+otp+"' ";
 		}
 		
+		@SuppressWarnings("unchecked")
 		List<Integer> list = template.query(query, new RowMapper() {
 
 			public Integer mapRow(ResultSet rs, int arg1) throws SQLException {
@@ -390,4 +408,42 @@ public int updateOTPindb(String user_type, String otp, String username) {
 		
 		return list.size();
 	}
+	
+	public List<AllBean> getAllUsers(){
+		String query = "Select * from ozonics.users ";
+		@SuppressWarnings("unchecked")
+		List<AllBean> list = template.query(query, new RowMapper() {
+
+			public AllBean mapRow(ResultSet rs, int arg1) throws SQLException {
+				// TODO Auto-generated method stub
+				AllBean bean = new AllBean();
+				bean.setUsername(rs.getString("username"));
+				bean.setPhone_num(rs.getString("phone_num"));
+				bean.setLogin_time(rs.getString("login_time"));
+				bean.setPassword(rs.getString("password"));
+				bean.setSegment(rs.getString("segment"));
+				bean.setCategory(rs.getString("category"));
+				bean.setSub_category(rs.getString("sub_category"));
+				return bean;
+			}});
+		return list;
+	}
+	
+	public List<AllBean> showLoginInfo(){
+		String query = "Select * from ozonics.login_details order by login_time desc";
+		@SuppressWarnings("unchecked")
+		List<AllBean> list = template.query(query, new RowMapper() {
+
+			public Object mapRow(ResultSet rs, int rowNum) throws SQLException {
+				AllBean bean = new AllBean();
+				bean.setUsername(rs.getString("username"));
+				bean.setLogin_time(rs.getString("login_time"));
+				return bean;
+			}
+			
+		});
+		System.out.println("list size:"+list.size());
+		return list;
+	}
+	
 }

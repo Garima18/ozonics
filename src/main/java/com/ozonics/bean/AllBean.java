@@ -19,9 +19,26 @@ public class AllBean {
 	private String sub_category;
 	private MultipartFile file;
 	private String user_type;
-	
+	private String login_time;
+	private String operation_type;
 
 	
+	public String getOperation_type() {
+		return operation_type;
+	}
+
+	public void setOperation_type(String operation_type) {
+		this.operation_type = operation_type;
+	}
+
+	public String getLogin_time() {
+		return login_time;
+	}
+
+	public void setLogin_time(String login_time) {
+		this.login_time = login_time;
+	}
+
 	public String getUser_type() {
 		return user_type;
 	}

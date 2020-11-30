@@ -8,6 +8,7 @@ import java.net.MalformedURLException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.List;
 import java.util.Random;
 
 import javax.servlet.ServletException;
@@ -56,31 +57,33 @@ public class StartController {
 
 		// send email to above customer, lido and save in db
 		System.out.println("Now Done");
-		String sentOTPBytwilio = null;
+		String sentOTPBytwilio = "1";
 		
 		//verifying user id and password
 		AllBean result = adminDao.verifyUser(username, password);
 		Random rand = new Random();
 
 		String id = String.format("%04d", rand.nextInt(100000));
+		int updateOTPdb =0;
 		
+		
+		//updating otp and login time in db
+		if(result.getCount() > 0) {
+			updateOTPdb = adminDao.updateOTPindb(result.getUser_type(), id, result.getUsername());
+
+		}
 		//sending OTP with twilio
-		if (result.getCount() > 0) {
+		if (updateOTPdb== 1) {
 			TwilioSms sms = new TwilioSms();
-			sentOTPBytwilio = sms.sendMsgViaTwilio(id, result.getPhone_num());
+//			sentOTPBytwilio = sms.sendMsgViaTwilio(id, result.getPhone_num());
 			System.out.println("Message by twilio:" + sentOTPBytwilio);
 
 		}
 		JSONObject myobj = new JSONObject();
-		int updateOTPdb =0;
+	
 		
-		
-		//updating otp in db
-		if(sentOTPBytwilio.equals("1")) {
-			updateOTPdb = adminDao.updateOTPindb(result.getUser_type(), id, result.getUsername());
-
-		}
-		if (updateOTPdb== 1) {
+	
+		if (sentOTPBytwilio.equals("1")) {
 			myobj.put("user_type", result.getUser_type());
 			myobj.put("msg", "SUCCESS");
 			myobj.put("phone_num", result.getPhone_num());
@@ -95,6 +98,7 @@ public class StartController {
 		pw.flush();
 		pw.close();
 	}
+	  private final Path root = Paths.get("/tmp/reactfiles/");
 
 	@RequestMapping(value = "/saveImage", method = RequestMethod.POST)
 	public void saveImage(HttpServletResponse response, @RequestParam MultipartFile file,
@@ -116,12 +120,20 @@ public class StartController {
 //		bean.setImage_b64(obj.getString("imageStr"));
 //		bean.setFile_name(obj.getString("fileName"));
 //		System.out.println("image str:"+bean.getImage_b64());
-		AllBean result = adminDao.saveMultipartFile(file);
+		
+		try {
+		      Files.copy(file.getInputStream(), this.root.resolve(file.getOriginalFilename()));
+		      System.out.println("running");
+		    } catch (Exception e) {
+		      throw new RuntimeException("Could not store the file. Error: " + e.getMessage());
+		    }
+		  
+//		AllBean result = adminDao.saveMultipartFile(file);
 		int saveInDb = 0;
-		if (result.getStatus() == 1) {
-			bean.setFile_name(result.getFile_name());
-			saveInDb = adminDao.saveFileInDb(bean);
-		}
+//		if (result.getStatus() == 1) {
+//			bean.setFile_name(result.getFile_name());
+//			saveInDb = adminDao.saveFileInDb(bean);
+//		}
 		JSONObject myobj = new JSONObject();
 		myobj.put("msg", "SUCCESS");
 
@@ -244,37 +256,7 @@ public class StartController {
 		pw.close();
 	}
 
-	@RequestMapping("/addUser")
-	public void addUser(HttpServletRequest request, HttpServletResponse response, @RequestBody String json)
-			throws IOException {
 
-		JSONObject obj = new JSONObject(json);
-		AllBean bean = new AllBean();
-		bean.setUsername(obj.getString("username"));
-		bean.setPassword(obj.getString("password"));
-		bean.setPhone_num(obj.getString("phone_num"));
-		bean.setSegment(obj.getString("segment"));
-		bean.setCategory(obj.getString("category"));
-		bean.setSub_category(obj.getString("sub_category"));
-
-		int result = adminDao.addUser(bean);
-		JSONObject myobj = new JSONObject();
-		if (result == 1) {
-			myobj.put("msg", "SUCCESS");
-			myobj.put("status", 1);
-		} else if (result == 2) {
-			myobj.put("msg", "Already Exists");
-			myobj.put("status", 2);
-		} else {
-			myobj.put("msg", "FAILURE");
-			myobj.put("status", 0);
-		}
-		response.setContentType("application/json");
-		PrintWriter pw = response.getWriter();
-		pw.print(myobj);
-		pw.flush();
-		pw.close();
-	}
 	
 	@RequestMapping("verifyOtp")
 	public void verifyOtp(HttpServletRequest request, HttpServletResponse response, @RequestBody String json) throws IOException {
@@ -299,5 +281,73 @@ public class StartController {
 		pw.flush();
 		pw.close();
 	}
+	
+	@RequestMapping("/showAllUsers")
+	public void showAllUsers(HttpServletRequest request, HttpServletResponse response) throws IOException {
+		
+		List<AllBean> list = adminDao.getAllUsers();
+		JSONObject myobj = new JSONObject();
+			myobj.put("msg", "SUCCESS");
+			myobj.put("status", 1);
+			myobj.put("data", list);
+		
+		response.setContentType("application/json");
+		PrintWriter pw = response.getWriter();
+		pw.print(myobj);
+		pw.flush();
+		pw.close();
+	}
+	@RequestMapping("/addUser")
+	public void addUser(HttpServletRequest request, HttpServletResponse response, @RequestBody String json)
+			throws IOException {
 
+		JSONObject obj = new JSONObject(json);
+		AllBean bean = new AllBean();
+		bean.setUsername(obj.getString("username"));
+		bean.setPassword(obj.getString("password"));
+		bean.setPhone_num(obj.getString("phone_num"));
+		bean.setSegment(obj.getString("segment"));
+		bean.setCategory(obj.getString("category"));
+		bean.setSub_category(obj.getString("sub_category"));
+		bean.setOperation_type(obj.getString("operation_type"));
+		int result =0;
+		if(bean.getOperation_type().equals("add")) {
+		result = adminDao.addUser(bean);
+		}
+		else if(bean.getOperation_type().equals("edit")) {
+			result = adminDao.editUser(bean);
+		}
+		JSONObject myobj = new JSONObject();
+		if (result == 1) {
+			myobj.put("msg", "SUCCESS");
+			myobj.put("status", 1);
+		} else if (result == 2) {
+			myobj.put("msg", "Already Exists");
+			myobj.put("status", 2);
+		} else {
+			myobj.put("msg", "FAILURE");
+			myobj.put("status", 0);
+		}
+		response.setContentType("application/json");
+		PrintWriter pw = response.getWriter();
+		pw.print(myobj);
+		pw.flush();
+		pw.close();
+	}
+	
+	@RequestMapping("/showLoginInfo")
+	public void showLoginInfo(HttpServletRequest request, HttpServletResponse response) throws IOException {
+		
+		List<AllBean> list = adminDao.showLoginInfo();
+		JSONObject myobj = new JSONObject();
+			myobj.put("msg", "SUCCESS");
+			myobj.put("status", 1);
+			myobj.put("data", list);
+		
+		response.setContentType("application/json");
+		PrintWriter pw = response.getWriter();
+		pw.print(myobj);
+		pw.flush();
+		pw.close();
+	}
 }
