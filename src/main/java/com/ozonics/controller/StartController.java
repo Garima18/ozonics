@@ -107,14 +107,14 @@ public class StartController {
 		String name = file.getOriginalFilename();
 		System.out.println(name);
 		JSONObject obj = new JSONObject();
-		String file_details = request.getParameter("id");
-		String[] file_arr = file_details.split("/");
-		System.out.println(file_details);
+//		String file_details = request.getParameter("id");
+//		String[] file_arr = file_details.split("/");
+//		System.out.println(file_details);
 		AllBean bean = new AllBean();
-		bean.setProduct_name(file_arr[0]);
-		bean.setCategory(file_arr[1]);
-		bean.setLevel1(file_arr[2]);
-		bean.setLevel2(file_arr[3]);
+//		bean.setProduct_name(file_arr[0]);
+//		bean.setCategory(file_arr[1]);
+//		bean.setLevel1(file_arr[2]);
+//		bean.setLevel2(file_arr[3]);
 
 //		bean.setLevel3(file_arr[4]);
 //		bean.setImage_b64(obj.getString("imageStr"));
