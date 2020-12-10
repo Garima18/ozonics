@@ -65,31 +65,34 @@ public class StartController {
 
 		String id = String.format("%04d", rand.nextInt(100000));
 		int updateOTPdb =0;
-		
+		JSONObject myobj = new JSONObject();
 		
 		//updating otp and login time in db
 		if(result.getCount() > 0) {
 			updateOTPdb = adminDao.updateOTPindb(result.getUser_type(), id, result.getUsername());
-
+			//sending OTP with twilio
+			if (updateOTPdb== 1) {
+				TwilioSms sms = new TwilioSms();
+//				sentOTPBytwilio = sms.sendMsgViaTwilio(id, result.getPhone_num());
+				System.out.println("Message by twilio:" + sentOTPBytwilio);
+				if (sentOTPBytwilio.equals("1")) {
+					myobj.put("user_type", result.getUser_type());
+					myobj.put("msg", "SUCCESS");
+					myobj.put("phone_num", result.getPhone_num());
+					myobj.put("username", result.getUsername());
+					myobj.put("segment", result.getSegment());
+					myobj.put("category", result.getCategory());
+					myobj.put("sub_category", result.getSub_category());
+				} else {
+					
+					myobj.put("msg", "FAILURE");
+				}
+			}
+			else {
+				myobj.put("msg", "FAILURE");
+			}
 		}
-		//sending OTP with twilio
-		if (updateOTPdb== 1) {
-			TwilioSms sms = new TwilioSms();
-//			sentOTPBytwilio = sms.sendMsgViaTwilio(id, result.getPhone_num());
-			System.out.println("Message by twilio:" + sentOTPBytwilio);
-
-		}
-		JSONObject myobj = new JSONObject();
-	
-		
-	
-		if (sentOTPBytwilio.equals("1")) {
-			myobj.put("user_type", result.getUser_type());
-			myobj.put("msg", "SUCCESS");
-			myobj.put("phone_num", result.getPhone_num());
-			myobj.put("username", result.getUsername());
-		} else {
-			
+		else {
 			myobj.put("msg", "FAILURE");
 		}
 		response.setContentType("application/json");
@@ -211,26 +214,7 @@ public class StartController {
 
 	}
 
-	@RequestMapping(value = "/fileUploadPage", method = RequestMethod.POST)
-	public String fileUpload(@Validated AllBean file, BindingResult result, ModelMap model) throws IOException {
-		if (result.hasErrors()) {
-			System.out.println("validation errors");
-			return "fileUploadPage";
-		} else {
-			System.out.println("Fetching file");
-			MultipartFile multipartFile = file.getFile();
-			// String uploadPath = context.getRealPath("") + File.separator + "temp" +
-			// File.separator;
-			String uploadPath = "/tmp/reactfiles/";
-			System.out.println(uploadPath);
 
-			FileCopyUtils.copy(file.getFile().getBytes(), new File(uploadPath + file.getFile().getOriginalFilename()));
-			String fileName = multipartFile.getOriginalFilename();
-			model.addAttribute("fileName", fileName);
-			return "success";
-		}
-
-	}
 
 	@RequestMapping("/searchQuery")
 	public void searchQuery(HttpServletRequest request, HttpServletResponse response, @RequestBody String json)
@@ -344,6 +328,25 @@ public class StartController {
 			myobj.put("status", 1);
 			myobj.put("data", list);
 		
+		response.setContentType("application/json");
+		PrintWriter pw = response.getWriter();
+		pw.print(myobj);
+		pw.flush();
+		pw.close();
+	}
+	@RequestMapping("/deleteUser")
+	public void deleteUser(HttpServletRequest request, HttpServletResponse response , @RequestBody String json) throws IOException {
+		JSONObject obj = new JSONObject(json);
+		String username = obj.getString("username");
+		int result = adminDao.deleteUser(username);
+		JSONObject myobj = new JSONObject();
+		if (result == 1) {
+			myobj.put("msg", "SUCCESS");
+			myobj.put("status", 1);
+		}  else {
+			myobj.put("msg", "FAILURE");
+			myobj.put("status", 0);
+		}
 		response.setContentType("application/json");
 		PrintWriter pw = response.getWriter();
 		pw.print(myobj);

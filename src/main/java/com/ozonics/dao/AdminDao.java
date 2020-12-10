@@ -17,8 +17,12 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Timestamp;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Date;
 import java.util.List;
 
 import org.json.JSONArray;
@@ -54,43 +58,51 @@ public class AdminDao {
 
 	public AllBean verifyUser(String username, String password) {
 		final AllBean resultBean = new AllBean();
-		
+
 		System.out.println("no part");
-		String query = "select username, phone_num from ozonics.login where lower(username) = '" + username.toLowerCase() + "' and password = '"
-				+ password + "'";
-		String query1 = "Select username, phone_num from ozonics.users where lower(username) = '"+username.toLowerCase()+"' and password = '"+password+"'";
-		
-	
+		String query = "select username, phone_num from ozonics.login where lower(username) = '"
+				+ username.toLowerCase() + "' and password = '" + password + "'";
+		String query1 = "Select username, phone_num, segment, category, sub_category from ozonics.users where lower(username) = '"
+				+ username.toLowerCase() + "' and password = '" + password + "'";
+
+		System.out.println(query);
+		@SuppressWarnings("unchecked")
 		List<String> list = template.query(query, new RowMapper() {
 			public String mapRow(ResultSet rs, int arg1) throws SQLException {
 				// TODO Auto-generated method stub
 				String str = rs.getString("username");
 				resultBean.setUsername(str);
 				resultBean.setPhone_num(rs.getString("phone_num"));
+				resultBean.setSegment("All");
+				resultBean.setSub_category("All");
+				resultBean.setCategory("All");
 				return str;
 			}
 		});
-		System.out.println("list:   "+list.size());
+		System.out.println("list:   " + list.size());
+		System.out.println(query1);
+		@SuppressWarnings("unchecked")
+
 		List<String> list2 = template.query(query1, new RowMapper() {
 			public String mapRow(ResultSet rs, int arg1) throws SQLException {
 				// TODO Auto-generated method stub
 				String str = rs.getString("username");
 				resultBean.setUsername(str);
-
 				resultBean.setPhone_num(rs.getString("phone_num"));
-
+				resultBean.setSegment(rs.getString("segment"));
+				resultBean.setSub_category(rs.getString("sub_category"));
+				resultBean.setCategory(rs.getString("category"));
 				return str;
 			}
 		});
-		
-		
+
 		System.out.println("count:" + count);
-		if(list.size() >0) {
+		if (list.size() > 0) {
 			resultBean.setUser_type("admin");
-		}else if(list2.size()>0){
+		} else if (list2.size() > 0) {
 			resultBean.setUser_type("user");
 		}
-		if (list.size() > 0 || list2.size() >0) {
+		if (list.size() > 0 || list2.size() > 0) {
 			resultBean.setCount(1);
 			return resultBean;
 		} else {
@@ -261,49 +273,59 @@ public class AdminDao {
 
 //		System.out.println(fileBean.getFile_name());
 
-
-        final int UPLOAD_PART_SIZE = 10 * Constants.MB;
+		final int UPLOAD_PART_SIZE = 10 * Constants.MB;
 		int bytesRead = 0, bytesAdded = 0;
-		byte[] data = new byte[10*Constants.MB];
+		byte[] data = new byte[10 * Constants.MB];
 		ByteArrayOutputStream bufferOutputStream = new ByteArrayOutputStream();
-		 URL url = new URL("_remote_url_of_uploading_file_");
-	     HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-         connection.setRequestMethod("GET");
+		URL url = new URL("_remote_url_of_uploading_file_");
+		HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+		connection.setRequestMethod("GET");
 
-         InputStream inputStream = connection.getInputStream();
-		while((bytesRead = inputStream.read(data, 0, bytesRead))!= -1) {
-            bufferOutputStream.write(data, 0, bytesRead);
-            if (bytesAdded < UPLOAD_PART_SIZE) {
-                // continue writing to same output stream unless it's size gets more than UPLOAD_PART_SIZE
-                bytesAdded += bytesRead;
-                continue;
-            }
-            AmazonS3 s3Client = AmazonS3ClientBuilder.standard().withRegion(Regions.US_EAST_1).build();
+		InputStream inputStream = connection.getInputStream();
+		while ((bytesRead = inputStream.read(data, 0, bytesRead)) != -1) {
+			bufferOutputStream.write(data, 0, bytesRead);
+			if (bytesAdded < UPLOAD_PART_SIZE) {
+				// continue writing to same output stream unless it's size gets more than
+				// UPLOAD_PART_SIZE
+				bytesAdded += bytesRead;
+				continue;
+			}
+			AmazonS3 s3Client = AmazonS3ClientBuilder.standard().withRegion(Regions.US_EAST_1).build();
 
-            S3MultipartUpload multipartUpload = new S3MultipartUpload("lido/ozonics/files", "abc.jpeg", s3Client);
-            multipartUpload.uploadPartAsync(new ByteArrayInputStream(bufferOutputStream.toByteArray()));
-            bufferOutputStream.reset(); // flush the bufferOutputStream
-            bytesAdded = 0; 
-            
+			S3MultipartUpload multipartUpload = new S3MultipartUpload("lido/ozonics/files", "abc.jpeg", s3Client);
+			multipartUpload.uploadPartAsync(new ByteArrayInputStream(bufferOutputStream.toByteArray()));
+			bufferOutputStream.reset(); // flush the bufferOutputStream
+			bytesAdded = 0;
+
 		}
-		
+
 		System.out.println("success");
 
 		return null;
 	}
 
 	public int addUser(AllBean bean) {
-		String check_user = "Select count(*) from ozonics.users where username = '" + bean.getUsername() + "'";
+		String check_user = "Select count(*) from ozonics.users where lower(username) = '" + bean.getUsername().toLowerCase() + "'";
+		if (bean.getSegment().equals("")) {
+			bean.setSegment("All");
+		}
+		if (bean.getCategory().equals("")) {
+			bean.setCategory("All");
+		}
+		if (bean.getSub_category().equals("")) {
+			bean.setSub_category("All");
+		}
+
 		final AllBean bean1 = new AllBean();
-		template.query(check_user, new RowMapper() {
+		template.query(check_user, new RowMapper<Object>() {
 
 			public Object mapRow(ResultSet rs, int arg1) throws SQLException {
 				// TODO Auto-generated method stub
 				bean1.setCount(rs.getInt("count"));
 				return null;
 			}
-
 		});
+
 		System.out.println("count of user:" + bean1.getCount());
 		int status = 0;
 		if (bean1.getCount() > 0) {
@@ -312,8 +334,11 @@ public class AdminDao {
 		} else {
 			String query = "insert into ozonics.users(username, password, phone_num, segment, category, sub_category, login_time) values ('"
 					+ bean.getUsername() + "', '" + bean.getPassword() + "', " + "'" + bean.getPhone_num() + "', '"
-					+ bean.getSegment() + "', '"+bean.getCategory()+"', '"+bean.getSub_category()+"', '"+Calendar.getInstance().getTime()+"')";
+					+ bean.getSegment() + "', '" + bean.getCategory() + "', '" + bean.getSub_category() + "', '"
+					+ Calendar.getInstance().getTime() + "')";
+			System.out.println(query);
 			try {
+
 				template.update(query);
 				status = 1;
 			} catch (Exception e) {
@@ -321,28 +346,32 @@ public class AdminDao {
 			}
 
 		}
-		System.out.println("status:"+status);
+		System.out.println("status:" + status);
 		return status;
 	}
-	
+
 	public int editUser(AllBean bean) {
-		
-		String query = "update ozonics.users set password = '"+bean.getPassword()+"', phone_num = '"+bean.getPhone_num()+"', segment='"+bean.getSegment()+"', category = '"+bean.getCategory()+"', "
-				+ "sub_category='"+bean.getSub_category()+"' where username = '"+bean.getUsername()+"' ";
-		int status =0;
+
+		String query = "update ozonics.users set password = '" + bean.getPassword() + "', phone_num = '"
+				+ bean.getPhone_num() + "', segment='" + bean.getSegment() + "', category = '" + bean.getCategory()
+				+ "', " + "sub_category='" + bean.getSub_category() + "' where username = '" + bean.getUsername()
+				+ "' ";
+		int status = 0;
 		try {
 			template.update(query);
-			status =1;
-		}catch(Exception e) {e.printStackTrace();}
-		
+			status = 1;
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+
 		return status;
 	}
-	
-	public JSONArray searchQuery (String searchStr){
-		String query = "select file_name from ozonics.files where file_folder like '%"+searchStr+"%'";
+
+	public JSONArray searchQuery(String searchStr) {
+		String query = "select file_name from ozonics.files where file_folder like '%" + searchStr + "%'";
 		System.out.println(query);
 		final JSONArray arr = new JSONArray();
-		
+
 		final List<AllBean> list = new ArrayList<AllBean>();
 		template.query(query, new RowMapper() {
 
@@ -354,62 +383,67 @@ public class AdminDao {
 				list.add(tempbean);
 				return null;
 			}
-			
+
 		});
-		System.out.println("File size:"+list.size());
+		System.out.println("File size:" + list.size());
 		return arr;
 	}
-	
-public int updateOTPindb(String user_type, String otp, String username) {
-	String query = "";
-	if(user_type.equals("admin")) {
-	query = "update ozonics.login set otp='"+otp+"', login_time = '"+Calendar.getInstance().getTime()+"' where username = '"+username+"'";
-	
-	}else {
-		query = "update ozonics.users set otp='"+otp+"', login_time = '"+Calendar.getInstance().getTime()+"' where username = '"+username+"'";
+
+	public int updateOTPindb(String user_type, String otp, String username) {
+		String query = "";
+		if (user_type.equals("admin")) {
+			query = "update ozonics.login set otp='" + otp + "', login_time = '" + Calendar.getInstance().getTime()
+					+ "' where username = '" + username + "'";
+
+		} else {
+			query = "update ozonics.users set otp='" + otp + "', login_time = '" + Calendar.getInstance().getTime()
+					+ "' where username = '" + username + "'";
+		}
+		String query2 = "insert into ozonics.login_details(username, login_time) values ('" + username + "', '"
+				+ Calendar.getInstance().getTime() + "')";
+		int status = 0;
+		try {
+			System.out.println(query);
+			System.out.println(query2);
+			template.update(query);
+			template.update(query2);
+			System.out.println("OTP updated successfully");
+			status = 1;
+		} catch (Exception e) {
+			System.out.println("OTP update failed");
+			e.printStackTrace();
+
+		}
+		return status;
 	}
-	String query2 = "insert into ozonics.login_details(username, login_time) values ('"+username+"', '"+Calendar.getInstance().getTime()+"')";
-	int status=0;
-	try {
-		System.out.println(query);
-		System.out.println(query2);
-		template.update(query);
-		template.update(query2);
-		System.out.println("OTP updated successfully");
-		status =1;
-	}catch(Exception e) {
-		System.out.println("OTP update failed");
-		e.printStackTrace();
-		
-	}
-	return status;
-}
-	
+
+	int count1 = 0;
+
 	public int verifyOTP(String user_type, int otp, String username) {
 		String query = "";
-		if(user_type.equals("admin"))
-		{
-			query = "select count(*)  from ozonics.login where lower(username) = '"+username.toLowerCase()+"' and otp = '"+otp+"' ";
-		}else {
-			query = "select count(*)    from ozonics.users where lower(username) = '"+username.toLowerCase()+"' and otp = '"+otp+"' ";
+		if (user_type.equals("admin")) {
+			query = "select count(*)  from ozonics.login where lower(username) = '" + username.toLowerCase()
+					+ "' and otp = '" + otp + "' ";
+		} else {
+			query = "select count(*)    from ozonics.users where lower(username) = '" + username.toLowerCase()
+					+ "' and otp = '" + otp + "' ";
 		}
-		
-		@SuppressWarnings("unchecked")
-		List<Integer> list = template.query(query, new RowMapper() {
+
+		template.query(query, new RowMapper() {
 
 			public Integer mapRow(ResultSet rs, int arg1) throws SQLException {
 				// TODO Auto-generated method stub
-				int count = rs.getInt("count");
-				return count;
+				count1 = rs.getInt("count");
+				return count1;
 			}
-			
+
 		});
-		System.out.println("length of list:"+list.size());
-		
-		return list.size();
+		System.out.println("length of list:" + count1);
+
+		return count1;
 	}
-	
-	public List<AllBean> getAllUsers(){
+
+	public List<AllBean> getAllUsers() {
 		String query = "Select * from ozonics.users ";
 		@SuppressWarnings("unchecked")
 		List<AllBean> list = template.query(query, new RowMapper() {
@@ -425,11 +459,12 @@ public int updateOTPindb(String user_type, String otp, String username) {
 				bean.setCategory(rs.getString("category"));
 				bean.setSub_category(rs.getString("sub_category"));
 				return bean;
-			}});
+			}
+		});
 		return list;
 	}
-	
-	public List<AllBean> showLoginInfo(){
+
+	public List<AllBean> showLoginInfo() {
 		String query = "Select * from ozonics.login_details order by login_time desc";
 		@SuppressWarnings("unchecked")
 		List<AllBean> list = template.query(query, new RowMapper() {
@@ -437,13 +472,30 @@ public int updateOTPindb(String user_type, String otp, String username) {
 			public Object mapRow(ResultSet rs, int rowNum) throws SQLException {
 				AllBean bean = new AllBean();
 				bean.setUsername(rs.getString("username"));
-				bean.setLogin_time(rs.getString("login_time"));
+				String datestr = rs.getString("login_time");
+				
+				String[] date_arr = datestr.split(" ");
+				String[] date_part = date_arr[0].split("-");
+				String parsedDate = date_part[2]+"-"+date_part[1]+"-"+date_part[0]+" "+date_arr[1];
+				bean.setLogin_time(parsedDate);
+
 				return bean;
 			}
-			
+
 		});
-		System.out.println("list size:"+list.size());
+		System.out.println("list size:" + list.size());
 		return list;
 	}
-	
+
+	public int deleteUser(String username) {
+		String query = "delete from ozonics.users where username = '" + username + "'";
+		int status = 0;
+		try {
+			template.update(query);
+			status = 1;
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return status;
+	}
 }
